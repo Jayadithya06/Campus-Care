@@ -1,4 +1,3 @@
-// 🔥 Firebase SDK imports
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 import {
   getAuth,
@@ -6,6 +5,7 @@ import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
+  signOut,
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 
@@ -16,10 +16,11 @@ import {
   serverTimestamp,
   query,
   where,
-  onSnapshot
+  onSnapshot,
+  deleteDoc,
+  doc
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
-/* 🔐 FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyBxyhmJB3PZm2rQh9I6ykwWwHSilG2QAsc",
   authDomain: "campus-care-3e4f3.firebaseapp.com",
@@ -29,108 +30,85 @@ const firebaseConfig = {
   appId: "1:186047827004:web:397d62b5630067772d4739"
 };
 
-// 🚀 Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-/* 🧩 UI ELEMENTS */
 const loginCard = document.getElementById("loginCard");
 const issueCard = document.getElementById("issueCard");
 const statusCard = document.getElementById("statusCard");
-
-const email = document.getElementById("email");
-const password = document.getElementById("password");
-const description = document.getElementById("description");
-const imageSelect = document.getElementById("imageSelect");
-const result = document.getElementById("result");
-const loginResult = document.getElementById("loginResult");
 const statusList = document.getElementById("statusList");
+const loginResult = document.getElementById("loginResult");
+const emailBtn = document.getElementById("emailBtn");
 
-/* 🔄 AUTH STATE */
+let cooldown = false;
+
+/* AUTH STATE */
 onAuthStateChanged(auth, user => {
-  if (user) {
-    loginCard.classList.remove("active");
-    issueCard.classList.add("active");
-    statusCard.classList.remove("active");
-    loadStatus();
-  } else {
-    loginCard.classList.add("active");
-    issueCard.classList.remove("active");
-    statusCard.classList.remove("active");
-  }
+  loginCard.classList.toggle("active", !user);
+  issueCard.classList.toggle("active", !!user);
+  statusCard.classList.remove("active");
+  if (user) loadStatus();
 });
 
-/* 📧 EMAIL LOGIN */
+/* COOLDOWN */
+function startCooldown() {
+  cooldown = true;
+  emailBtn.disabled = true;
+  setTimeout(() => {
+    cooldown = false;
+    emailBtn.disabled = false;
+  }, 3000);
+}
+
+/* LOGIN */
 window.emailLogin = async () => {
+  if (cooldown) return;
   loginResult.innerText = "";
-
-  if (!email.value || !password.value) {
-    loginResult.innerText = "Please fill all fields";
-    return;
-  }
-
   try {
     await signInWithEmailAndPassword(auth, email.value, password.value);
-  } catch (error) {
-    loginResult.innerText = error.message;
+  } catch {
+    loginResult.innerText = "Invalid email or password.";
+    startCooldown();
   }
 };
 
-/* 🆕 EMAIL SIGNUP */
+/* SIGNUP */
 window.emailSignup = async () => {
+  if (cooldown) return;
   loginResult.innerText = "";
-
-  if (!email.value || !password.value) {
-    loginResult.innerText = "Please fill all fields";
-    return;
-  }
-
-  if (password.value.length < 6) {
-    loginResult.innerText = "Password must be at least 6 characters";
-    return;
-  }
-
   try {
     await createUserWithEmailAndPassword(auth, email.value, password.value);
-    loginResult.innerText = "Account created successfully. You can login now.";
-  } catch (error) {
-    loginResult.innerText = error.message;
+  } catch {
+    loginResult.innerText = "Account exists or weak password.";
+    startCooldown();
   }
 };
 
-/* 🔵 GOOGLE LOGIN */
+/* GOOGLE */
 window.googleLogin = async () => {
-  try {
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
-  } catch (error) {
-    loginResult.innerText = error.message;
-  }
+  await signInWithPopup(auth, new GoogleAuthProvider());
 };
 
-/* 📝 SUBMIT ISSUE */
+/* LOGOUT */
+window.logout = async () => {
+  await signOut(auth);
+};
+
+/* SUBMIT */
 window.submitComplaint = async () => {
-  if (!auth.currentUser) return;
-
-  if (!description.value) {
-    result.innerText = "Please describe the issue";
-    return;
-  }
-
   await addDoc(collection(db, "complaints"), {
     description: description.value,
     category: imageSelect.value,
     userEmail: auth.currentUser.email,
-    status: "pending",
+    status: "Pending",
     createdAt: serverTimestamp()
   });
-
   result.innerText = "Issue submitted successfully!";
   description.value = "";
 };
 
-/* 📡 LOAD STATUS (REAL TIME) */
+/* LOAD + DELETE */
 function loadStatus() {
   const q = query(
     collection(db, "complaints"),
@@ -139,19 +117,30 @@ function loadStatus() {
 
   onSnapshot(q, snapshot => {
     statusList.innerHTML = "";
-    snapshot.forEach(doc => {
-      const d = doc.data();
+    snapshot.forEach(docSnap => {
+      const d = docSnap.data();
       statusList.innerHTML += `
-        <p>
+        <div class="query-item">
           <b>${d.description}</b><br>
-          Status: ${d.status}
-        </p>
+          Category: ${d.category}<br>
+          Status: ${d.status}<br>
+          <button class="delete-btn" onclick="deleteQuery('${docSnap.id}')">
+            Delete
+          </button>
+        </div>
       `;
     });
   });
 }
 
-/* 🔁 NAVIGATION */
+/* DELETE QUERY */
+window.deleteQuery = async (id) => {
+  if (confirm("Are you sure you want to delete this query?")) {
+    await deleteDoc(doc(db, "complaints", id));
+  }
+};
+
+/* NAV */
 window.showStatus = () => {
   issueCard.classList.remove("active");
   statusCard.classList.add("active");
