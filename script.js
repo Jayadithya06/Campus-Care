@@ -44,13 +44,15 @@ const password = document.getElementById("password");
 const description = document.getElementById("description");
 const imageSelect = document.getElementById("imageSelect");
 const result = document.getElementById("result");
+const loginResult = document.getElementById("loginResult");
 const statusList = document.getElementById("statusList");
 
-/* 🔄 AUTH STATE LISTENER */
+/* 🔄 AUTH STATE */
 onAuthStateChanged(auth, user => {
   if (user) {
     loginCard.classList.remove("active");
     issueCard.classList.add("active");
+    statusCard.classList.remove("active");
     loadStatus();
   } else {
     loginCard.classList.add("active");
@@ -59,25 +61,62 @@ onAuthStateChanged(auth, user => {
   }
 });
 
-/* 📧 EMAIL LOGIN / SIGNUP */
+/* 📧 EMAIL LOGIN */
 window.emailLogin = async () => {
+  loginResult.innerText = "";
+
+  if (!email.value || !password.value) {
+    loginResult.innerText = "Please fill all fields";
+    return;
+  }
+
   try {
     await signInWithEmailAndPassword(auth, email.value, password.value);
   } catch (error) {
-    // If user not found, create new account
+    loginResult.innerText = error.message;
+  }
+};
+
+/* 🆕 EMAIL SIGNUP */
+window.emailSignup = async () => {
+  loginResult.innerText = "";
+
+  if (!email.value || !password.value) {
+    loginResult.innerText = "Please fill all fields";
+    return;
+  }
+
+  if (password.value.length < 6) {
+    loginResult.innerText = "Password must be at least 6 characters";
+    return;
+  }
+
+  try {
     await createUserWithEmailAndPassword(auth, email.value, password.value);
+    loginResult.innerText = "Account created successfully. You can login now.";
+  } catch (error) {
+    loginResult.innerText = error.message;
   }
 };
 
 /* 🔵 GOOGLE LOGIN */
 window.googleLogin = async () => {
-  const provider = new GoogleAuthProvider();
-  await signInWithPopup(auth, provider);
+  try {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+  } catch (error) {
+    loginResult.innerText = error.message;
+  }
 };
 
 /* 📝 SUBMIT ISSUE */
 window.submitComplaint = async () => {
   if (!auth.currentUser) return;
+
+  if (!description.value) {
+    result.innerText = "Please describe the issue";
+    return;
+  }
 
   await addDoc(collection(db, "complaints"), {
     description: description.value,
@@ -91,7 +130,7 @@ window.submitComplaint = async () => {
   description.value = "";
 };
 
-/* 📡 REAL-TIME STATUS TRACKING */
+/* 📡 LOAD STATUS (REAL TIME) */
 function loadStatus() {
   const q = query(
     collection(db, "complaints"),
