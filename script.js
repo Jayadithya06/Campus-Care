@@ -1,3 +1,4 @@
+// 🔥 Firebase SDK imports
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 import {
   getAuth,
@@ -18,7 +19,7 @@ import {
   onSnapshot
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
-/* FIREBASE CONFIG */
+/* 🔐 FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyBxyhmJB3PZm2rQh9I6ykwWwHSilG2QAsc",
   authDomain: "campus-care-3e4f3.firebaseapp.com",
@@ -28,16 +29,24 @@ const firebaseConfig = {
   appId: "1:186047827004:web:397d62b5630067772d4739"
 };
 
+// 🚀 Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-/* CARD REFERENCES */
+/* 🧩 UI ELEMENTS */
 const loginCard = document.getElementById("loginCard");
 const issueCard = document.getElementById("issueCard");
 const statusCard = document.getElementById("statusCard");
 
-/* AUTH STATE */
+const email = document.getElementById("email");
+const password = document.getElementById("password");
+const description = document.getElementById("description");
+const imageSelect = document.getElementById("imageSelect");
+const result = document.getElementById("result");
+const statusList = document.getElementById("statusList");
+
+/* 🔄 AUTH STATE LISTENER */
 onAuthStateChanged(auth, user => {
   if (user) {
     loginCard.classList.remove("active");
@@ -50,22 +59,23 @@ onAuthStateChanged(auth, user => {
   }
 });
 
-/* EMAIL LOGIN */
+/* 📧 EMAIL LOGIN / SIGNUP */
 window.emailLogin = async () => {
   try {
     await signInWithEmailAndPassword(auth, email.value, password.value);
-  } catch {
+  } catch (error) {
+    // If user not found, create new account
     await createUserWithEmailAndPassword(auth, email.value, password.value);
   }
 };
 
-/* GOOGLE LOGIN */
+/* 🔵 GOOGLE LOGIN */
 window.googleLogin = async () => {
   const provider = new GoogleAuthProvider();
   await signInWithPopup(auth, provider);
 };
 
-/* SUBMIT COMPLAINT */
+/* 📝 SUBMIT ISSUE */
 window.submitComplaint = async () => {
   if (!auth.currentUser) return;
 
@@ -81,7 +91,7 @@ window.submitComplaint = async () => {
   description.value = "";
 };
 
-/* LOAD STATUS (REAL TIME) */
+/* 📡 REAL-TIME STATUS TRACKING */
 function loadStatus() {
   const q = query(
     collection(db, "complaints"),
@@ -93,13 +103,16 @@ function loadStatus() {
     snapshot.forEach(doc => {
       const d = doc.data();
       statusList.innerHTML += `
-        <p><b>${d.description}</b><br>Status: ${d.status}</p>
+        <p>
+          <b>${d.description}</b><br>
+          Status: ${d.status}
+        </p>
       `;
     });
   });
 }
 
-/* NAVIGATION */
+/* 🔁 NAVIGATION */
 window.showStatus = () => {
   issueCard.classList.remove("active");
   statusCard.classList.add("active");
