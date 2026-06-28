@@ -5,7 +5,8 @@ import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
-  onAuthStateChanged
+  onAuthStateChanged,
+  signOut
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 
 import {
@@ -99,13 +100,21 @@ window.emailSignup = async () => {
 
 /* GOOGLE */
 window.googleLogin = async () => {
-  const provider = new GoogleAuthProvider();
-  await signInWithPopup(auth, provider);
+  try {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+  } catch (error) {
+    loginResult.innerText = error.message;
+  }
 };
 
 /* LOGOUT */
 window.logout = async () => {
-  await auth.signOut();
+  try {
+    await signOut(auth);
+  } catch (error) {
+    alert(error.message);
+  }
 };
 
 /* SUBMIT */
